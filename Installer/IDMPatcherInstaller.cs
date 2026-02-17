@@ -634,14 +634,23 @@ namespace IDMPatcherInstaller
                 File.Copy(idmExe, idmOriginal, false);
             }
             
+            string iconSourceFile = File.Exists(idmOriginal) ? idmOriginal : idmExe;
+            Log($"Icon source: {iconSourceFile}");
+            
             Log(Localization.Get("ReplacingIDM"));
             string launcherPath = Path.Combine(patcherDir, "IDMLauncher.exe");
+            string tempLauncher = Path.Combine(patcherDir, "IDMLauncher_temp.exe");
+            
+            File.Copy(launcherPath, tempLauncher, true);
+            
+            Log("Copying icon from original IDM to launcher...");
+            CopyIconToLauncher(iconSourceFile, tempLauncher);
             
             for (int i = 0; i < 5; i++)
             {
                 try
                 {
-                    File.Copy(launcherPath, idmExe, true);
+                    File.Copy(tempLauncher, idmExe, true);
                     break;
                 }
                 catch (IOException)
@@ -652,8 +661,11 @@ namespace IDMPatcherInstaller
                 }
             }
             
-            Log("Copying icon from original IDM to launcher...");
-            CopyIconToLauncher(idmOriginal, idmExe);
+            try
+            {
+                File.Delete(tempLauncher);
+            }
+            catch { }
             
             Log(Localization.Get("CopyingPatchFiles"));
             
