@@ -11,17 +11,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="idm_patch.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="idm_injector.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="IDMLauncher.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="idm_signal_unload.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <EmbeddedResource Include="idm_patch.dll" />
+    <EmbeddedResource Include="idm_injector.exe" />
+    <EmbeddedResource Include="IDMLauncher.exe" />
+    <EmbeddedResource Include="idm_signal_unload.exe" />
   </ItemGroup>
 </Project>

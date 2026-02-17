@@ -42,7 +42,18 @@ namespace IDMPatcherInstaller
                 ["SelectIDMPath"] = "Select IDM Installation Directory",
                 ["IDMPathSet"] = "IDM path set to: {0}",
                 ["Retry"] = "Retry",
-                ["IDMStillRunning"] = "IDM is still running!\n\nPlease close IDM completely:\n• Right-click IDM tray icon → Exit\n• Or close IDM window\n\nThen click 'Retry' to continue installation."
+                ["IDMStillRunning"] = "IDM is still running!\n\nPlease close IDM completely:\n• Right-click IDM tray icon → Exit\n• Or close IDM window\n\nThen click 'Retry' to continue installation.",
+                ["Uninstall"] = "Uninstall",
+                ["UninstallConfirm"] = "Are you sure you want to uninstall IDM Patcher?\n\nThis will restore the original IDM executable.",
+                ["UninstallConfirmTitle"] = "Confirm Uninstall",
+                ["Uninstalling"] = "Uninstalling IDM Patcher...",
+                ["RestoringOriginal"] = "Restoring original IDMan.exe...",
+                ["RemovingPatchFiles"] = "Removing patch files...",
+                ["UninstallComplete"] = "Uninstall complete!",
+                ["UninstallSuccess"] = "IDM Patcher has been uninstalled successfully!\n\nOriginal IDM has been restored.",
+                ["UninstallSuccessTitle"] = "Uninstall Complete",
+                ["ErrorUninstallFailed"] = "Uninstall failed: {0}",
+                ["NotInstalled"] = "IDM Patcher is not installed"
             },
             
             // Russian
@@ -79,7 +90,18 @@ namespace IDMPatcherInstaller
                 ["SelectIDMPath"] = "Выберите директорию установки IDM",
                 ["IDMPathSet"] = "Путь к IDM установлен: {0}",
                 ["Retry"] = "Повторить",
-                ["IDMStillRunning"] = "IDM все еще запущен!\n\nПожалуйста, закройте IDM полностью:\n• Правый клик на иконке IDM в трее → Выход\n• Или закройте окно IDM\n\nЗатем нажмите 'Повторить' для продолжения установки."
+                ["IDMStillRunning"] = "IDM все еще запущен!\n\nПожалуйста, закройте IDM полностью:\n• Правый клик на иконке IDM в трее → Выход\n• Или закройте окно IDM\n\nЗатем нажмите 'Повторить' для продолжения установки.",
+                ["Uninstall"] = "Удалить",
+                ["UninstallConfirm"] = "Вы уверены, что хотите удалить IDM Patcher?\n\nЭто восстановит оригинальный исполняемый файл IDM.",
+                ["UninstallConfirmTitle"] = "Подтверждение удаления",
+                ["Uninstalling"] = "Удаление IDM Patcher...",
+                ["RestoringOriginal"] = "Восстановление оригинального IDMan.exe...",
+                ["RemovingPatchFiles"] = "Удаление файлов патча...",
+                ["UninstallComplete"] = "Удаление завершено!",
+                ["UninstallSuccess"] = "IDM Patcher успешно удален!\n\nОригинальный IDM восстановлен.",
+                ["UninstallSuccessTitle"] = "Удаление завершено",
+                ["ErrorUninstallFailed"] = "Удаление не удалось: {0}",
+                ["NotInstalled"] = "IDM Patcher не установлен"
             },
             
             // German

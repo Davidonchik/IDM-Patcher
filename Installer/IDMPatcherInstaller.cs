@@ -90,6 +90,7 @@ namespace IDMPatcherInstaller
         private Label statusLabel;
         private ProgressBar progressBar;
         private Button installButton;
+        private Button uninstallButton;
         private RichTextBox logBox;
         private string patcherDir = @"C:\ProgramData\IDM_Patcher";
         private string idmDir = @"C:\Program Files (x86)\Internet Download Manager";
@@ -198,7 +199,7 @@ namespace IDMPatcherInstaller
             installButton = new Button
             {
                 Text = Localization.Get("Install"),
-                Location = new System.Drawing.Point(250, 350),
+                Location = new System.Drawing.Point(200, 350),
                 Size = new System.Drawing.Size(100, 40),
                 Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold),
                 BackColor = accentColor,
@@ -209,11 +210,29 @@ namespace IDMPatcherInstaller
             installButton.FlatAppearance.BorderSize = 0;
             installButton.Click += InstallButton_Click;
 
+            uninstallButton = new Button
+            {
+                Text = Localization.Get("Uninstall"),
+                Location = new System.Drawing.Point(310, 350),
+                Size = new System.Drawing.Size(100, 40),
+                Font = new System.Drawing.Font("Segoe UI", 10, System.Drawing.FontStyle.Bold),
+                BackColor = System.Drawing.Color.FromArgb(200, 50, 50),
+                ForeColor = System.Drawing.Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Enabled = false
+            };
+            uninstallButton.FlatAppearance.BorderSize = 0;
+            uninstallButton.Click += UninstallButton_Click;
+
             this.Controls.Add(titleLabel);
             this.Controls.Add(statusLabel);
             this.Controls.Add(progressBar);
             this.Controls.Add(logBox);
             this.Controls.Add(installButton);
+            this.Controls.Add(uninstallButton);
+            
+            CheckIfInstalled();
         }
 
         private void Log(string message)
@@ -457,6 +476,8 @@ namespace IDMPatcherInstaller
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information
                 );
+                
+                CheckIfInstalled();
             }
             catch (Exception ex)
             {
@@ -530,18 +551,30 @@ namespace IDMPatcherInstaller
             Log(Localization.Get("ClosingIDM"));
             try
             {
-                string signalPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "idm_signal_unload.exe");
-                if (File.Exists(signalPath))
+                string signalPath = Path.Combine(Path.GetTempPath(), "idm_signal_unload.exe");
+                
+                var assembly = Assembly.GetExecutingAssembly();
+                using (Stream stream = assembly.GetManifestResourceStream("IDMPatcherInstaller.idm_signal_unload.exe"))
                 {
-                    var signalProcess = Process.Start(new ProcessStartInfo
+                    if (stream != null)
                     {
-                        FileName = signalPath,
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true
-                    });
-                    signalProcess.WaitForExit(3000);
-                    System.Threading.Thread.Sleep(2000);
+                        using (FileStream fileStream = File.Create(signalPath))
+                        {
+                            stream.CopyTo(fileStream);
+                        }
+                        
+                        var signalProcess = Process.Start(new ProcessStartInfo
+                        {
+                            FileName = signalPath,
+                            UseShellExecute = false,
+                            CreateNoWindow = true,
+                            RedirectStandardOutput = true
+                        });
+                        signalProcess.WaitForExit(3000);
+                        System.Threading.Thread.Sleep(2000);
+                        
+                        try { File.Delete(signalPath); } catch { }
+                    }
                 }
 
                 string[] processNames = { "IDMan", "IDMan_original" };
@@ -598,21 +631,27 @@ namespace IDMPatcherInstaller
             
             string[] files = { "idm_patch.dll", "idm_injector.exe", "IDMLauncher.exe", "idm_signal_unload.exe" };
 
-            string sourceDir = AppDomain.CurrentDomain.BaseDirectory;
+            var assembly = Assembly.GetExecutingAssembly();
             
             foreach (var file in files)
             {
-                string sourcePath = Path.Combine(sourceDir, file);
+                string resourceName = $"IDMPatcherInstaller.{file}";
                 string destPath = Path.Combine(patcherDir, file);
                 
-                if (File.Exists(sourcePath))
+                using (Stream stream = assembly.GetManifestResourceStream(resourceName))
                 {
-                    Log(Localization.Get("CopyingFile", file));
-                    File.Copy(sourcePath, destPath, true);
-                }
-                else
-                {
-                    Log(Localization.Get("WarningFile", file));
+                    if (stream != null)
+                    {
+                        Log(Localization.Get("CopyingFile", file));
+                        using (FileStream fileStream = File.Create(destPath))
+                        {
+                            stream.CopyTo(fileStream);
+                        }
+                    }
+                    else
+                    {
+                        Log(Localization.Get("WarningFile", file));
+                    }
                 }
             }
         }
@@ -635,23 +674,14 @@ namespace IDMPatcherInstaller
                 File.Copy(idmExe, idmOriginal, false);
             }
             
-            string iconSourceFile = File.Exists(idmOriginal) ? idmOriginal : idmExe;
-            Log($"Icon source: {iconSourceFile}");
-            
             Log(Localization.Get("ReplacingIDM"));
             string launcherPath = Path.Combine(patcherDir, "IDMLauncher.exe");
-            string tempLauncher = Path.Combine(patcherDir, "IDMLauncher_temp.exe");
-            
-            File.Copy(launcherPath, tempLauncher, true);
-            
-            Log("Copying icon from original IDM to launcher...");
-            CopyIconToLauncher(iconSourceFile, tempLauncher);
             
             for (int i = 0; i < 5; i++)
             {
                 try
                 {
-                    File.Copy(tempLauncher, idmExe, true);
+                    File.Copy(launcherPath, idmExe, true);
                     break;
                 }
                 catch (IOException)
@@ -661,12 +691,6 @@ namespace IDMPatcherInstaller
                     System.Threading.Thread.Sleep(1000);
                 }
             }
-            
-            try
-            {
-                File.Delete(tempLauncher);
-            }
-            catch { }
             
             Log(Localization.Get("CopyingPatchFiles"));
             
@@ -716,69 +740,152 @@ namespace IDMPatcherInstaller
             Log(Localization.Get("PatchedSuccess"));
         }
 
-        private void CopyIconToLauncher(string sourceExe, string targetExe)
+        private void CheckIfInstalled()
         {
             try
             {
-                Log($"Extracting icon from: {sourceExe}");
-                
-                Icon icon = Icon.ExtractAssociatedIcon(sourceExe);
-                if (icon == null)
+                string idmOriginal = Path.Combine(idmDir, "IDMan_original.exe");
+                if (File.Exists(idmOriginal))
                 {
-                    Log("Warning: Could not extract icon from source");
-                    return;
+                    uninstallButton.Enabled = true;
+                    statusLabel.Text = "IDM Patcher is installed";
                 }
-
-                string iconPath = Path.Combine(Path.GetTempPath(), "idm_icon.ico");
-                using (FileStream fs = new FileStream(iconPath, FileMode.Create))
+                else
                 {
-                    icon.Save(fs);
+                    uninstallButton.Enabled = false;
+                    statusLabel.Text = Localization.Get("NotInstalled");
                 }
-                
-                Log($"Icon extracted to: {iconPath}");
-                
-                string rceditPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "rcedit.exe");
-                if (!File.Exists(rceditPath))
-                {
-                    Log("Warning: rcedit.exe not found, skipping icon update");
-                    Log("Icon will not be copied, but patcher will still work");
-                    try { File.Delete(iconPath); } catch { }
-                    return;
-                }
-
-                var psi = new ProcessStartInfo
-                {
-                    FileName = rceditPath,
-                    Arguments = $"\"{targetExe}\" --set-icon \"{iconPath}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true
-                };
-
-                using (var process = Process.Start(psi))
-                {
-                    process.WaitForExit();
-                    if (process.ExitCode == 0)
-                    {
-                        Log("Icon successfully copied to launcher");
-                    }
-                    else
-                    {
-                        Log($"Warning: rcedit failed with code {process.ExitCode}");
-                    }
-                }
-
-                try { File.Delete(iconPath); } catch { }
             }
-            catch (Exception ex)
+            catch
             {
-                Log($"Warning: Failed to copy icon: {ex.Message}");
-                Log("Patcher will still work without custom icon");
+                uninstallButton.Enabled = false;
             }
         }
 
+        private async void UninstallButton_Click(object sender, EventArgs e)
+        {
+            if (!IsAdministrator())
+            {
+                MessageBox.Show(Localization.Get("ErrorAdmin"), Localization.Get("ErrorTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
+            var result = MessageBox.Show(
+                Localization.Get("UninstallConfirm"),
+                Localization.Get("UninstallConfirmTitle"),
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question
+            );
+
+            if (result != DialogResult.Yes)
+                return;
+
+            installButton.Enabled = false;
+            uninstallButton.Enabled = false;
+            await System.Threading.Tasks.Task.Run(() => Uninstall());
+        }
+
+        private void Uninstall()
+        {
+            try
+            {
+                UpdateStatus(Localization.Get("Uninstalling"), 10);
+                Log(Localization.Get("Uninstalling"));
+
+                UpdateStatus(Localization.Get("ClosingIDM"), 20);
+                CloseIDM();
+
+                string idmExe = Path.Combine(idmDir, "IDMan.exe");
+                string idmOriginal = Path.Combine(idmDir, "IDMan_original.exe");
+
+                if (!File.Exists(idmOriginal))
+                {
+                    throw new Exception("IDMan_original.exe not found. Patcher may not be installed.");
+                }
+
+                UpdateStatus(Localization.Get("RestoringOriginal"), 50);
+                Log(Localization.Get("RestoringOriginal"));
+
+                for (int i = 0; i < 5; i++)
+                {
+                    try
+                    {
+                        File.Copy(idmOriginal, idmExe, true);
+                        break;
+                    }
+                    catch (IOException)
+                    {
+                        if (i == 4) throw;
+                        Log(Localization.Get("Retrying", i + 1));
+                        System.Threading.Thread.Sleep(1000);
+                    }
+                }
+
+                File.Delete(idmOriginal);
+
+                UpdateStatus(Localization.Get("RemovingPatchFiles"), 70);
+                Log(Localization.Get("RemovingPatchFiles"));
+
+                string[] filesToRemove = {
+                    Path.Combine(idmDir, "idm_injector.exe"),
+                    Path.Combine(idmDir, "idm_patch.dll")
+                };
+
+                foreach (var file in filesToRemove)
+                {
+                    try
+                    {
+                        if (File.Exists(file))
+                        {
+                            File.Delete(file);
+                            Log($"Deleted: {Path.GetFileName(file)}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Warning: Could not delete {Path.GetFileName(file)}: {ex.Message}");
+                    }
+                }
+
+                try
+                {
+                    if (Directory.Exists(patcherDir))
+                    {
+                        Directory.Delete(patcherDir, true);
+                        Log($"Deleted directory: {patcherDir}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"Warning: Could not delete patcher directory: {ex.Message}");
+                }
+
+                UpdateStatus(Localization.Get("UninstallComplete"), 100);
+                Log(Localization.Get("UninstallSuccess"));
+
+                MessageBox.Show(
+                    Localization.Get("UninstallSuccess"),
+                    Localization.Get("UninstallSuccessTitle"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information
+                );
+
+                CheckIfInstalled();
+                installButton.Enabled = true;
+            }
+            catch (Exception ex)
+            {
+                Log($"ERROR: {ex.Message}");
+                MessageBox.Show(
+                    Localization.Get("ErrorUninstallFailed", ex.Message),
+                    Localization.Get("ErrorTitle"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
+                installButton.Enabled = true;
+                uninstallButton.Enabled = true;
+            }
+        }
 
         private void RunCommand(string fileName, string arguments)
         {

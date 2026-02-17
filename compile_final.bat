@@ -20,7 +20,8 @@ cl /O2 /MD idm_injector.cpp /link /OUT:idm_injector.exe
 
 echo.
 echo [4/4] Compiling launcher (GUI mode)...
-cl /O2 /MD IDMLauncher.cpp user32.lib /link /SUBSYSTEM:WINDOWS /OUT:IDMLauncher.exe
+rc IDMLauncher.rc
+cl /O2 /MD IDMLauncher.cpp user32.lib /link IDMLauncher.res /SUBSYSTEM:WINDOWS /OUT:IDMLauncher.exe
 
 if %ERRORLEVEL% EQU 0 (
     echo.

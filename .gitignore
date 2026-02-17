@@ -10,6 +10,10 @@
 !Installer/*.dll
 !Installer/*.exe
 
+# Installer build artifacts
+Installer/bin/
+Installer/obj/
+
 # Visual Studio
 .vs/
 bin/
