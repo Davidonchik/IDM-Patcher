@@ -6,6 +6,7 @@
 *.ilk
 *.dll
 *.exe
+*.res
 !Release/IDMPatcherInstaller.exe
 !Installer/*.dll
 !Installer/*.exe
