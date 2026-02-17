@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -719,92 +720,61 @@ namespace IDMPatcherInstaller
         {
             try
             {
-                IntPtr hModule = LoadLibraryEx(sourceExe, IntPtr.Zero, LOAD_LIBRARY_AS_DATAFILE);
-                if (hModule == IntPtr.Zero)
+                Log($"Extracting icon from: {sourceExe}");
+                
+                Icon icon = Icon.ExtractAssociatedIcon(sourceExe);
+                if (icon == null)
                 {
-                    Log("Warning: Could not load source executable for icon extraction");
+                    Log("Warning: Could not extract icon from source");
                     return;
                 }
 
-                try
+                string iconPath = Path.Combine(Path.GetTempPath(), "idm_icon.ico");
+                using (FileStream fs = new FileStream(iconPath, FileMode.Create))
                 {
-                    IntPtr hUpdate = BeginUpdateResource(targetExe, false);
-                    if (hUpdate == IntPtr.Zero)
-                    {
-                        Log("Warning: Could not begin resource update");
-                        return;
-                    }
-
-                    try
-                    {
-                        bool iconCopied = false;
-
-                        for (int i = 1; i <= 10; i++)
-                        {
-                            IntPtr iconId = new IntPtr(i);
-                            IntPtr hResInfo = FindResource(hModule, iconId, new IntPtr(RT_GROUP_ICON));
-                            
-                            if (hResInfo != IntPtr.Zero)
-                            {
-                                IntPtr hResData = LoadResource(hModule, hResInfo);
-                                if (hResData != IntPtr.Zero)
-                                {
-                                    IntPtr pResource = LockResource(hResData);
-                                    uint size = SizeofResource(hModule, hResInfo);
-                                    
-                                    if (pResource != IntPtr.Zero && size > 0)
-                                    {
-                                        byte[] iconData = new byte[size];
-                                        Marshal.Copy(pResource, iconData, 0, (int)size);
-                                        
-                                        UpdateResource(hUpdate, new IntPtr(RT_GROUP_ICON), iconId, 0, iconData, size);
-                                        iconCopied = true;
-                                        Log($"Copied icon group resource ID {i}");
-                                    }
-                                }
-                            }
-
-                            hResInfo = FindResource(hModule, iconId, new IntPtr(RT_ICON));
-                            if (hResInfo != IntPtr.Zero)
-                            {
-                                IntPtr hResData = LoadResource(hModule, hResInfo);
-                                if (hResData != IntPtr.Zero)
-                                {
-                                    IntPtr pResource = LockResource(hResData);
-                                    uint size = SizeofResource(hModule, hResInfo);
-                                    
-                                    if (pResource != IntPtr.Zero && size > 0)
-                                    {
-                                        byte[] iconData = new byte[size];
-                                        Marshal.Copy(pResource, iconData, 0, (int)size);
-                                        
-                                        UpdateResource(hUpdate, new IntPtr(RT_ICON), iconId, 0, iconData, size);
-                                        Log($"Copied icon resource ID {i}");
-                                    }
-                                }
-                            }
-                        }
-
-                        if (!iconCopied)
-                        {
-                            Log("Warning: No icon resources found in source executable");
-                        }
-                    }
-                    finally
-                    {
-                        EndUpdateResource(hUpdate, false);
-                    }
+                    icon.Save(fs);
                 }
-                finally
+                
+                Log($"Icon extracted to: {iconPath}");
+                
+                string rceditPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "rcedit.exe");
+                if (!File.Exists(rceditPath))
                 {
-                    FreeLibrary(hModule);
+                    Log("Warning: rcedit.exe not found, skipping icon update");
+                    Log("Icon will not be copied, but patcher will still work");
+                    try { File.Delete(iconPath); } catch { }
+                    return;
                 }
 
-                Log("Icon copy completed successfully");
+                var psi = new ProcessStartInfo
+                {
+                    FileName = rceditPath,
+                    Arguments = $"\"{targetExe}\" --set-icon \"{iconPath}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+
+                using (var process = Process.Start(psi))
+                {
+                    process.WaitForExit();
+                    if (process.ExitCode == 0)
+                    {
+                        Log("Icon successfully copied to launcher");
+                    }
+                    else
+                    {
+                        Log($"Warning: rcedit failed with code {process.ExitCode}");
+                    }
+                }
+
+                try { File.Delete(iconPath); } catch { }
             }
             catch (Exception ex)
             {
                 Log($"Warning: Failed to copy icon: {ex.Message}");
+                Log("Patcher will still work without custom icon");
             }
         }
 
