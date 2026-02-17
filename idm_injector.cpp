@@ -1,6 +1,5 @@
 /*
  * IDM DLL Injector
- * Инжектит idm_patch.dll в процесс IDMan.exe
  */
 
 #include <windows.h>
@@ -8,7 +7,6 @@
 #include <stdio.h>
 #include <string>
 
-// Найти процесс по имени
 DWORD FindProcessId(const char* processName) {
     HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hSnapshot == INVALID_HANDLE_VALUE) {
@@ -31,7 +29,6 @@ DWORD FindProcessId(const char* processName) {
     return 0;
 }
 
-// Инжектить DLL в процесс
 bool InjectDLL(DWORD processId, const char* dllPath) {
     printf("[*] Opening process %d...\n", processId);
     
@@ -48,7 +45,6 @@ bool InjectDLL(DWORD processId, const char* dllPath) {
     
     printf("[+] Process opened\n");
     
-    // Выделяем память в целевом процессе
     size_t dllPathLen = strlen(dllPath) + 1;
     LPVOID pDllPath = VirtualAllocEx(
         hProcess, NULL, dllPathLen,
@@ -63,7 +59,6 @@ bool InjectDLL(DWORD processId, const char* dllPath) {
     
     printf("[+] Memory allocated at 0x%p\n", pDllPath);
     
-    // Записываем путь к DLL
     if (!WriteProcessMemory(hProcess, pDllPath, dllPath, dllPathLen, NULL)) {
         printf("[-] Failed to write memory! Error: %d\n", GetLastError());
         VirtualFreeEx(hProcess, pDllPath, 0, MEM_RELEASE);
@@ -73,7 +68,6 @@ bool InjectDLL(DWORD processId, const char* dllPath) {
     
     printf("[+] DLL path written\n");
     
-    // Получаем адрес LoadLibraryA
     HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
     LPTHREAD_START_ROUTINE pLoadLibrary = (LPTHREAD_START_ROUTINE)GetProcAddress(hKernel32, "LoadLibraryA");
     
@@ -86,7 +80,6 @@ bool InjectDLL(DWORD processId, const char* dllPath) {
     
     printf("[+] LoadLibraryA at 0x%p\n", pLoadLibrary);
     
-    // Создаём удалённый поток
     HANDLE hThread = CreateRemoteThread(
         hProcess, NULL, 0,
         pLoadLibrary, pDllPath,
@@ -103,10 +96,8 @@ bool InjectDLL(DWORD processId, const char* dllPath) {
     printf("[+] Remote thread created\n");
     printf("[*] Waiting for injection to complete...\n");
     
-    // Ждём завершения
     WaitForSingleObject(hThread, INFINITE);
     
-    // Получаем код возврата (HMODULE загруженной DLL)
     DWORD exitCode;
     GetExitCodeThread(hThread, &exitCode);
     
@@ -123,14 +114,12 @@ bool InjectDLL(DWORD processId, const char* dllPath) {
     return true;
 }
 
-// Запустить процесс с инжектированной DLL
 bool LaunchWithDLL(const char* exePath, const char* dllPath) {
     printf("[*] Launching %s...\n", exePath);
     
     STARTUPINFOA si = { sizeof(si) };
     PROCESS_INFORMATION pi;
     
-    // Создаём процесс в suspended состоянии
     if (!CreateProcessA(
         exePath, NULL, NULL, NULL, FALSE,
         CREATE_SUSPENDED, NULL, NULL, &si, &pi
@@ -142,7 +131,6 @@ bool LaunchWithDLL(const char* exePath, const char* dllPath) {
     printf("[+] Process created (PID: %d)\n", pi.dwProcessId);
     printf("[*] Injecting DLL...\n");
     
-    // Инжектим DLL
     bool success = InjectDLL(pi.dwProcessId, dllPath);
     
     if (success) {
@@ -161,7 +149,6 @@ bool LaunchWithDLL(const char* exePath, const char* dllPath) {
 }
 
 int main(int argc, char* argv[]) {
-    // Режим командной строки для автоматизации
     if (argc >= 3) {
         std::string mode = argv[1];
         
@@ -176,18 +163,14 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         else if (mode == "inject") {
-            // idm_injector.exe inject <PID> "path\to\patch.dll"
-            // или idm_injector.exe inject "path\to\patch.dll" (найти процесс автоматически)
             
             DWORD pid = 0;
             const char* dllPath = NULL;
             
             if (argc >= 4) {
-                // Формат: inject <PID> "dll_path"
                 pid = atoi(argv[2]);
                 dllPath = argv[3];
             } else if (argc >= 3) {
-                // Формат: inject "dll_path" (найти процесс)
                 dllPath = argv[2];
                 pid = FindProcessId("IDMan.exe");
             }
@@ -204,16 +187,13 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    // Интерактивный режим
     printf("========================================\n");
     printf("IDM DLL Injector\n");
     printf("========================================\n\n");
     
-    // Получаем полный путь к DLL
     char dllPath[MAX_PATH];
     GetFullPathNameA("idm_patch.dll", MAX_PATH, dllPath, NULL);
     
-    // Проверяем существование DLL
     if (GetFileAttributesA(dllPath) == INVALID_FILE_ATTRIBUTES) {
         printf("[-] DLL not found: %s\n", dllPath);
         printf("[-] Make sure idm_patch.dll is in the same directory!\n");
@@ -222,7 +202,6 @@ int main(int argc, char* argv[]) {
     
     printf("[+] DLL found: %s\n\n", dllPath);
     
-    // Режим 1: Инжектить в запущенный процесс
     printf("Select mode:\n");
     printf("1. Inject into running IDMan.exe\n");
     printf("2. Launch IDMan.exe with patch\n");
@@ -232,7 +211,6 @@ int main(int argc, char* argv[]) {
     scanf("%d", &choice);
     
     if (choice == 1) {
-        // Ищем процесс
         printf("\n[*] Searching for IDMan.exe...\n");
         DWORD pid = FindProcessId("IDMan.exe");
         
@@ -244,7 +222,6 @@ int main(int argc, char* argv[]) {
         
         printf("[+] Found IDMan.exe (PID: %d)\n\n", pid);
         
-        // Инжектим
         if (InjectDLL(pid, dllPath)) {
             printf("\n[+] SUCCESS! IDM is now patched!\n");
             printf("[+] Check %%TEMP%%\\idm_patch.log for details\n");
@@ -255,7 +232,6 @@ int main(int argc, char* argv[]) {
         }
     }
     else if (choice == 2) {
-        // Запускаем с патчем
         const char* idmPath = "C:\\Program Files (x86)\\Internet Download Manager\\IDMan.exe";
         
         printf("\n[*] IDM path: %s\n", idmPath);

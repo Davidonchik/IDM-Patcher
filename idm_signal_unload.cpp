@@ -5,7 +5,6 @@ int main() {
     printf("IDM Patch Unload Signal\n");
     printf("=======================\n\n");
 
-    // Открываем событие
     HANDLE hEvent = OpenEventA(EVENT_MODIFY_STATE, FALSE, "Global\\IDMPatchUnloadEvent");
     if (!hEvent) {
         printf("Failed to open unload event: %d\n", GetLastError());
@@ -15,7 +14,6 @@ int main() {
 
     printf("Sending unload signal to DLL...\n");
     
-    // Отправляем сигнал
     SetEvent(hEvent);
     CloseHandle(hEvent);
 
