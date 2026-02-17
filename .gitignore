@@ -1,0 +1,68 @@
+# Build outputs
+*.obj
+*.exp
+*.lib
+*.pdb
+*.ilk
+*.dll
+*.exe
+!Release/IDMPatcherInstaller.exe
+!Installer/*.dll
+!Installer/*.exe
+
+# Visual Studio
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.vsidx
+*.v2
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# IDM files
+IDMan*.exe
+IDMNetMon.dll
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*.swp
+*~
+
+# OS files
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Decompilation artifacts
+IDMan_FULL_DECOMPILED.c
+*.c.bak
+
+# Compiled DLLs and EXEs in root (keep source files)
+/idm_patch.dll
+/idm_injector.exe
+/IDMLauncher.exe
+/idm_signal_unload.exe
+/idm_trial_reset.dll
+/idm_unload_dll.exe
